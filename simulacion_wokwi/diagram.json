@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "author": "Robótica 2 - MQTT Practica",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "pot1",
+      "top": -150,
+      "left": -120,
+      "attrs": { "label": "Temp / Analog S0" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn1",
+      "top": -50,
+      "left": -180,
+      "attrs": { "color": "green", "label": "PIR (S1)" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn2",
+      "top": 20,
+      "left": -180,
+      "attrs": { "color": "blue", "label": "Puerta (S2)" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn3",
+      "top": 90,
+      "left": -180,
+      "attrs": { "color": "red", "label": "E-Stop (S3)" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn4",
+      "top": 160,
+      "left": -180,
+      "attrs": { "color": "orange", "label": "Llama (S4)" }
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "buzzer1",
+      "top": 50,
+      "left": 180,
+      "attrs": { "label": "Sirena (Act1)" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_fan",
+      "top": 150,
+      "left": 180,
+      "attrs": { "color": "cyan", "label": "Ventilador (Act2)" }
+    }
+  ],
+  "connections": [
+    [ "esp:GND.1", "pot1:GND", "black", [ "v0" ] ],
+    [ "esp:3V3", "pot1:VCC", "red", [ "v0" ] ],
+    [ "esp:34", "pot1:SIG", "green", [ "v0" ] ],
+
+    [ "btn1:1.1", "esp:14", "green", [ "h0" ] ],
+    [ "btn1:2.1", "esp:GND.1", "black", [ "h0" ] ],
+
+    [ "btn2:1.1", "esp:27", "blue", [ "h0" ] ],
+    [ "btn2:2.1", "esp:GND.1", "black", [ "h0" ] ],
+
+    [ "btn3:1.1", "esp:26", "red", [ "h0" ] ],
+    [ "btn3:2.1", "esp:GND.1", "black", [ "h0" ] ],
+
+    [ "btn4:1.1", "esp:25", "orange", [ "h0" ] ],
+    [ "btn4:2.1", "esp:GND.1", "black", [ "h0" ] ],
+
+    [ "esp:18", "buzzer1:2", "red", [ "h0" ] ],
+    [ "esp:GND.2", "buzzer1:1", "black", [ "h0" ] ],
+
+    [ "esp:19", "led_fan:A", "cyan", [ "h0" ] ],
+    [ "esp:GND.2", "led_fan:C", "black", [ "h0" ] ]
+  ],
+  "dependencies": {}
+}
