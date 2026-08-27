@@ -1,7 +1,7 @@
 # Greenhouse Climate-Control Simulation: Complete Physical Build & Wiring Manual
 **Platform**: ESP32 Dev Module (Standalone Controller)  
 **Actuators**: 2 × SG90 Micro-Servos (Direct Hardware PWM)  
-**Sensors**: DHT11 (Climate) & HW-416-B PIR (Presence/Motion)  
+**Sensors**: DHT11 (Climate), HW-416-B PIR (Presence), & 10kΩ Potentiometer (Analog Dial / Soil Moisture)  
 **Power Topology**: Dual-Power (USB for ESP32 & Logic + External 5V for Servos with Mandatory Common Ground)
 
 ---
@@ -13,12 +13,14 @@
              |
         (USB Cable)
              v
-       +-----------+          GPIO 18 (PWM Sig 1) ---------> [ SG90 Servo 1 (Roof Vent) ]
-       |   ESP32   |          GPIO 19 (PWM Sig 2) ---------> [ SG90 Servo 2 (Side Vent) ]
-       | DEVKIT V1 |          GPIO 4  (Bidirectional) -----> [ DHT11 Climate Sensor ]
-       |           |          GPIO 14 (Digital Input) -----> [ HW-416-B PIR Sensor ]
-       |           |          GPIO 26 (Input Pullup) ------> [ Button 1 (Roof Override) ]
-       |           |          GPIO 27 (Input Pullup) ------> [ Button 2 (Side Override) ]
+       +-----------+          GPIO 34 (Analog In) <---------- [ 10kΩ Potentiometer Wiper ]
+       |   ESP32   |          GPIO 18 (PWM Sig 1) ----------> [ SG90 Servo 1 (Roof Vent) ]
+       | DEVKIT V1 |          GPIO 19 (PWM Sig 2) ----------> [ SG90 Servo 2 (Side Vent) ]
+       |           |          GPIO 4  (Bidirectional) ------> [ DHT11 Climate Sensor ]
+       |           |          GPIO 14 (Digital Input) ------> [ HW-416-B PIR Sensor ]
+       |           |          GPIO 26 (Input Pullup) -------> [ Button 1 (Roof Override) ]
+       |           |          GPIO 27 (Input Pullup) -------> [ Button 2 (Side Override) ]
+       |    3V3    | ---------------------------------------> [ Potentiometer VCC Leg ]
        |    GND    | ----+
        +-----------+     |
                          | <--- MANDATORY COMMON GROUND WIRE (Connects to Blue Rail)
@@ -42,6 +44,7 @@
 | Component | Quantity | Visual Description & Identifying Notes |
 | :--- | :---: | :--- |
 | **ESP32 DevKit V1 (30 or 38 pin)** | 1 | Black PCB with silver metal RF shield, Micro-USB/Type-C port, and `EN` & `BOOT` buttons. |
+| **Potentiometer (10 kΩ or 5 kΩ)** | 1 | 3-legged rotary dial with a shaft/knob on top. (Left/Right legs = Power/GND, Middle = Wiper Signal). |
 | **SG90 Micro-Servos (9g)** | 2 | Small blue translucent plastic motors with 3-pin wires: **Brown/Black** (GND), **Red** (+5V), and **Orange/Yellow** (PWM Signal). |
 | **DHT11 Climate Sensor** | 1 | Light blue plastic grid casing (3-pin PCB module with `+`, `-`, `out`, or 4-pin bare sensor). |
 | **HW-416-B / HC-SR501 PIR Sensor** | 1 | Green PCB with a white dome (Fresnel lens) on top and 2 orange adjustment potentiometers. |
@@ -90,7 +93,13 @@
 2. Run a black jumper wire from one of the **GND** pins on the ESP32 to the **Blue (-) Ground Rail**.
 3. **Leave the ESP32 `VIN` / `5V` pin UNCONNECTED** (power will come from your computer's USB cable).
 
-### Step 3: Wire the DHT11 Temperature & Humidity Sensor
+### Step 3: Wire the Potentiometer (Analog Input)
+1. Place the potentiometer into three adjacent rows on the breadboard.
+2. Connect **Leg 1 (Outer leg)** $\rightarrow$ ESP32 **3V3 Pin** (3.3V analog reference).
+3. Connect **Leg 2 (Opposite outer leg)** $\rightarrow$ Breadboard **Blue (-) Ground Rail**.
+4. Connect **Center Wiper Leg** $\rightarrow$ ESP32 **GPIO 34** (Analog input wire).
+
+### Step 4: Wire the DHT11 Temperature & Humidity Sensor
 1. If your DHT11 is a **3-pin module** (labeled `+`, `-`, `out` / `S`):
    - Pin `+` (VCC) $\rightarrow$ Breadboard **Red (+) Rail** (Red wire).
    - Pin `-` (GND) $\rightarrow$ Breadboard **Blue (-) Rail** (Black wire).
@@ -101,13 +110,13 @@
    - Pin 3 (NC) $\rightarrow$ Leave unconnected.
    - Pin 4 (Rightmost, GND) $\rightarrow$ Blue (-) Rail.
 
-### Step 4: Wire the HW-416-B PIR Motion Sensor
+### Step 5: Wire the HW-416-B PIR Motion Sensor
 1. Gently pull off the white plastic Fresnel dome to read the pin labels on the PCB (`VCC`, `OUT`, `GND`).
 2. Pin `VCC` $\rightarrow$ Breadboard **Red (+) Rail** (Red wire).
 3. Pin `GND` $\rightarrow$ Breadboard **Blue (-) Rail** (Black wire).
 4. Pin `OUT` $\rightarrow$ ESP32 **GPIO 14** (Purple wire).
 
-### Step 5: Wire the 2x Push Buttons
+### Step 6: Wire the 2x Push Buttons
 1. **Button 1 (Roof Vent Manual Override)**:
    - Insert Button 1 across the center trench.
    - Connect one pin to ESP32 **GPIO 26** (Green wire).
@@ -118,7 +127,7 @@
    - Connect the diagonally opposite pin to the **Blue (-) Ground Rail** (Black wire).
 *(No external resistors needed: firmware automatically enables ESP32 internal `INPUT_PULLUP`).*
 
-### Step 6: Wire the 2x SG90 Micro-Servos
+### Step 7: Wire the 2x SG90 Micro-Servos
 1. **Servo 1 (Roof Vent SG90)**:
    - **Brown / Black Wire (GND)** $\rightarrow$ Breadboard **Blue (-) Ground Rail**.
    - **Red Wire (+5V Power)** $\rightarrow$ Breadboard **Red (+) 5V Rail**.
@@ -139,6 +148,9 @@
 | **ESP32 USB Port** | Computer USB Port | **USB Cable**| Logic power (3.3V LDO), firmware upload & Serial |
 | **ESP32 GND Pin** | Breadboard Blue Rail (-) | **Black** | **MANDATORY COMMON GROUND LINK** |
 | **ESP32 VIN Pin** | **DISCONNECTED** | — | **DO NOT connect to Red rail when USB is plugged in** |
+| **Potentiometer Leg 1** | ESP32 `3V3` Pin | **Red** | 3.3V Analog voltage reference |
+| **Potentiometer Leg 2** | Breadboard Blue Rail (-) | **Black** | Ground reference |
+| **Potentiometer Wiper** | ESP32 `GPIO 34` | **White** | Analog input signal (0–100%) |
 | **DHT11 VCC (+)** | Breadboard Red Rail (+) | **Red** | Sensor 5V power |
 | **DHT11 GND (-)** | Breadboard Blue Rail (-) | **Black** | Sensor Ground |
 | **DHT11 DATA (Out)** | ESP32 `GPIO 4` | **Yellow** | Digital climate telemetry signal |
@@ -163,8 +175,9 @@
 ### Pre-Flight Checklist:
 1. [ ] Is the black ground jumper connected from **ESP32 GND** to the **Breadboard Blue Rail**?
 2. [ ] Is the **ESP32 VIN pin disconnected** from the external +5V rail while the USB cable is in use?
-3. [ ] Are both servo red wires connected to the **Breadboard Red Rail** and **NOT** to the ESP32 3.3V pin?
-4. [ ] Have you entered your local Wi-Fi SSID, Password, and Broker IP in `include/secrets.h`?
+3. [ ] Is the potentiometer's outer leg connected to **3V3** (not 5V) and center wiper to **GPIO 34**?
+4. [ ] Are both servo red wires connected to the **Breadboard Red Rail** and **NOT** to the ESP32 3.3V pin?
+5. [ ] Have you entered your local Wi-Fi SSID, Password, and Broker IP in `include/secrets.h`?
 
 ---
 
@@ -172,12 +185,12 @@
 
 | Symptom | Probable Cause | Exact Solution |
 | :--- | :--- | :--- |
+| **Potentiometer reading is erratic or jumps to 100% / 0%** | Loose connection or outer leg connected to 5V instead of 3.3V. | Ensure Potentiometer Leg 1 connects to ESP32 `3V3`, Leg 2 to `GND`, and Wiper to `GPIO 34`. |
 | **Servos twitch/jitter erratically or don't move** | Missing Common Ground between ESP32 and external power supply. | Connect a jumper wire from an ESP32 `GND` pin to the breadboard's Blue (-) ground rail. |
 | **ESP32 resets repeatedly with `Brownout detector was triggered`** | Servos are drawing power through the ESP32 rather than external supply. | Ensure servo red wires are plugged into the external supply's 5V rail. Check that the MB102 power adapter is rated for at least 5V 2A. |
 | **DHT11 logs `Failed to read sensor!`** | Loose wire on `GPIO 4` or missing pull-up resistor on bare sensor. | Verify connection to `GPIO 4`. If using a 4-pin sensor, place a 4.7 kΩ–10 kΩ resistor between VCC and DATA. |
 | **ESP32 status LED stays off (Wi-Fi fails to connect)** | Wrong credentials or attempting to connect to 5 GHz Wi-Fi. | ESP32 only supports **2.4 GHz** Wi-Fi networks. Verify credentials in `include/secrets.h`. |
 | **MQTT Connection fails (Error code: -2)** | Mosquitto broker is not running or Windows Firewall is blocking Port 1883. | Ensure Mosquitto is active on your PC with `listener 1883 0.0.0.0` and `allow_anonymous true`. |
-| **PIR Sensor stays HIGH continuously** | Sensor needs 30 seconds to calibrate on boot, or sensitivity potentiometer is turned too high. | Wait 30 seconds after powering on. Turn the left potentiometer (Sensitivity) slightly counter-clockwise with a screwdriver. |
 
 ---
 
@@ -208,6 +221,9 @@ Run broker from terminal:
 ```bash
 # Monitor all live greenhouse telemetries
 mosquitto_sub -h localhost -p 1883 -t "greenhouse/#" -v
+
+# Monitor only the Potentiometer dial
+mosquitto_sub -h localhost -p 1883 -t "greenhouse/potentiometer" -v
 
 # Remotely open Roof Vent (Servo 1)
 mosquitto_pub -h localhost -p 1883 -t "greenhouse/servo1/set" -m "OPEN"

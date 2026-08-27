@@ -5,13 +5,14 @@
  * Platform: ESP32 Dev Module (PlatformIO / Arduino Framework)
  * Hardware:
  *   - 1x ESP32 DevKit (Wi-Fi + MQTT Client + Controller Brain)
+ *   - 1x Potentiometer Analog Input (GPIO 34, ADC1)
  *   - 1x DHT11 Temperature & Humidity Sensor (GPIO 4)
  *   - 1x HW-416-B PIR Motion Sensor (GPIO 14)
  *   - 1x Button 1: Roof Vent Manual Override (GPIO 26, INPUT_PULLUP)
  *   - 1x Button 2: Side Vent Manual Override (GPIO 27, INPUT_PULLUP)
  *   - 1x SG90 Micro-Servo 1: Roof Vent (GPIO 18, 50 Hz PWM)
  *   - 1x SG90 Micro-Servo 2: Side Vent / Shade (GPIO 19, 50 Hz PWM)
- *   - External 5V Power Supply powering both servos & sensors with Common GND
+ *   - External 5V Power Supply powering servos with Shared Common Ground (GND)
  * ============================================================================
  */
 
@@ -52,6 +53,11 @@ float currentHumidity    = 0.0f;
 bool  sensorValid        = false;
 bool  currentMotionState = false;
 
+// Potentiometer Analog State
+int currentPotRaw         = 0;
+int currentPotPercent     = 0;
+int lastPublishedPotPercent = -1;
+
 // Actuator Angles (0 to 180 degrees)
 int servo1RoofAngle = Config::SERVO_VENT_CLOSED_ANGLE;
 int servo2SideAngle = Config::SERVO_VENT_CLOSED_ANGLE;
@@ -61,6 +67,7 @@ unsigned long lastDhtReadTime      = 0;
 unsigned long lastTelemetryPubTime = 0;
 unsigned long lastMqttRetryTime    = 0;
 unsigned long lastWifiCheckTime    = 0;
+unsigned long lastPotSampleTime    = 0;
 
 // Button Debounce State Trackers
 struct DebouncedButton {
@@ -81,6 +88,7 @@ void checkWiFiConnection();
 void connectMQTT();
 void onMqttMessageReceived(String &topic, String &payload);
 void readSensors();
+void readPotentiometer();
 void handleButtons();
 void updateDebouncedButton(DebouncedButton &btn, uint8_t btnNumber);
 void applyControlLogic();
@@ -100,6 +108,7 @@ void setup() {
     Serial.println("==================================================");
 
     // 2. Configure GPIO Pins
+    pinMode(Pins::POT_PIN, INPUT);
     pinMode(Pins::PIR_PIN, INPUT);
     pinMode(Pins::BUTTON_1_PIN, INPUT_PULLUP);
     pinMode(Pins::BUTTON_2_PIN, INPUT_PULLUP);
@@ -109,6 +118,7 @@ void setup() {
     // 3. Initialize DHT11 Sensor
     dhtSensor.begin();
     Serial.println("[DHT11] Sensor initialized on GPIO " + String(Pins::DHT_PIN));
+    Serial.println("[POT] Analog Potentiometer initialized on GPIO " + String(Pins::POT_PIN));
 
     // 4. Initialize Servos with Dedicated ESP32 Hardware PWM Timers
     ESP32PWM::allocateTimer(0);
@@ -158,8 +168,9 @@ void loop() {
         }
     }
 
-    // 2. Read Sensors (DHT11 & PIR)
+    // 2. Read Sensors (DHT11, PIR, & Potentiometer)
     readSensors();
+    readPotentiometer();
 
     // 3. Process Debounced Push Buttons
     handleButtons();
@@ -299,7 +310,7 @@ void onMqttMessageReceived(String &topic, String &payload) {
 }
 
 // ============================================================================
-// SENSOR READING (DHT11 & PIR)
+// SENSOR READING (DHT11, PIR, & POTENTIOMETER)
 // ============================================================================
 void readSensors() {
     unsigned long now = millis();
@@ -330,6 +341,33 @@ void readSensors() {
         Serial.printf("[PIR] Motion status changed -> %s\n", motionMsg);
         if (mqttClient.connected()) {
             mqttClient.publish(Topics::MOTION, motionMsg, false, 0);
+        }
+    }
+}
+
+void readPotentiometer() {
+    unsigned long now = millis();
+    if (now - lastPotSampleTime < 100) { // Sample every 100 ms
+        return;
+    }
+    lastPotSampleTime = now;
+
+    // Read 12-bit ADC (0 - 4095)
+    int raw = analogRead(Pins::POT_PIN);
+    currentPotRaw = raw;
+    
+    // Map to percentage 0 - 100%
+    int pct = map(raw, 0, 4095, 0, 100);
+    pct = constrain(pct, 0, 100);
+    currentPotPercent = pct;
+
+    // If user rotated knob with significant change, publish immediately
+    if (abs(currentPotPercent - lastPublishedPotPercent) >= Config::POT_PUBLISH_DELTA_PERCENT) {
+        lastPublishedPotPercent = currentPotPercent;
+        Serial.printf("[POT] Position: %d%% (Raw: %d)\n", currentPotPercent, currentPotRaw);
+        
+        if (mqttClient.connected()) {
+            mqttClient.publish(Topics::POTENTIOMETER, String(currentPotPercent).c_str(), false, 0);
         }
     }
 }
@@ -488,6 +526,7 @@ void publishTelemetry() {
         mqttClient.publish(Topics::TEMPERATURE, String(currentTemperature, 1).c_str(), false, 0);
         mqttClient.publish(Topics::HUMIDITY, String(currentHumidity, 1).c_str(), false, 0);
     }
+    mqttClient.publish(Topics::POTENTIOMETER, String(currentPotPercent).c_str(), false, 0);
 
     // 2. Publish Structured JSON Payload
     JsonDocument doc;
@@ -505,6 +544,10 @@ void publishTelemetry() {
         climate["humidity"]    = nullptr;
         climate["status"]      = "SENSOR_ERROR";
     }
+
+    JsonObject analog = doc["analog_inputs"].to<JsonObject>();
+    analog["potentiometer_percent"] = currentPotPercent;
+    analog["potentiometer_raw"]     = currentPotRaw;
 
     JsonObject security = doc["activity"].to<JsonObject>();
     security["motion_detected"] = currentMotionState;

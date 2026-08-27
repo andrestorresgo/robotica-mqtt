@@ -7,7 +7,10 @@
 // HARDWARE PIN ASSIGNMENTS (ESP32 STANDALONE CONTROLLER)
 // ============================================================================
 namespace Pins {
-    // Sensors
+    // Analog Sensors (ADC1)
+    constexpr uint8_t POT_PIN         = 34;  // Potentiometer Analog Input (ADC1_CH6, 0-4095)
+    
+    // Digital Sensors
     constexpr uint8_t DHT_PIN         = 4;   // DHT11 Data Pin (requires pull-up, e.g. 4.7k-10k or internal)
     constexpr uint8_t PIR_PIN         = 14;  // HW-416-B PIR Motion Sensor Digital Output
     
@@ -44,6 +47,7 @@ namespace Config {
     constexpr unsigned long TELEMETRY_PUBLISH_MS       = 3000;  // Periodic MQTT telemetry rate
     constexpr unsigned long BUTTON_DEBOUNCE_MS         = 50;    // Switch debounce filter time
     constexpr unsigned long MQTT_RECONNECT_INTERVAL_MS = 5000;  // Non-blocking MQTT retry interval
+    constexpr int POT_PUBLISH_DELTA_PERCENT            = 3;     // Minimum % change to trigger instant publish
 }
 
 // ============================================================================
@@ -53,8 +57,9 @@ namespace Topics {
     // Status & Telemetry
     constexpr const char* LWT_STATUS      = "greenhouse/status";          // "online" / "offline"
     constexpr const char* TELEMETRY_JSON  = "greenhouse/telemetry";       // Combined JSON payload
-    constexpr const char* TEMPERATURE     = "greenhouse/temperature";     // Float string
-    constexpr const char* HUMIDITY        = "greenhouse/humidity";        // Float string
+    constexpr const char* TEMPERATURE     = "greenhouse/temperature";     // Float string (°C)
+    constexpr const char* HUMIDITY        = "greenhouse/humidity";        // Float string (% RH)
+    constexpr const char* POTENTIOMETER   = "greenhouse/potentiometer";   // Integer string (0-100%)
     constexpr const char* MOTION          = "greenhouse/motion";          // "MOTION_DETECTED" / "CLEAR"
     
     // Sensor & Button Events
